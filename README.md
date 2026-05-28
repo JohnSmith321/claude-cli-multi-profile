@@ -323,9 +323,11 @@ Repo này có sẵn:
 
 Installer làm:
 1. Copy `hooks/*.ps1` → `~/.claude-hooks/`
-2. Detect các profile `.claude-<NN>` đang có
-3. Register `SessionStart` hook trong `settings.json` của mỗi profile (trừ claude-00)
-4. Idempotent — re-run an toàn
+2. Tạo `~/.claude-00` làm memory canonical (nếu chưa có)
+3. Detect các profile `.claude-<NN>` đang có
+4. Register `SessionStart` hook trong `settings.json` của mỗi profile (trừ claude-00)
+
+Idempotent — re-run an toàn.
 
 Sau khi install: restart Claude CLI / VS Code. Lần sau bạn `VS Code → Open Folder` 1 project mới và mở Claude, memory tự unified, không cần thao tác gì.
 
@@ -408,44 +410,64 @@ Nếu bạn muốn teammate cũng setup pattern này trên máy của họ, các
 <summary><b>Prompt template (click để mở)</b></summary>
 
 ```text
-Tôi đang setup Multi-Profile Claude CLI trên Windows. Tôi có nhiều profile
-(.claude-01, .claude-02, có thể có .claude-03...) dưới %USERPROFILE%, mỗi
-profile login một account Anthropic khác nhau. (Quy ước: suffix khớp với
-số account. .claude-00 reserved cho memory canonical, chưa tồn tại hoặc
-rỗng — sẽ được tạo khi áp pattern bên dưới.)
+Tôi đang setup Multi-Profile Claude CLI trên Windows theo pattern của một đồng nghiệp. Tôi có nhiều profile (`.claude-00`, `.claude-01`, có thể có thêm `.claude-02`, `.claude-03`) dưới `%USERPROFILE%`, mỗi profile login một account Anthropic khác nhau.
 
-Vấn đề: mỗi profile lưu auto-memory riêng cho cùng project → switch profile
-thì memory không thấy nhau.
+**Vấn đề tôi muốn giải quyết:** Mỗi profile Claude lưu auto-memory riêng cho cùng một project, nên khi switch profile thì memory không thấy nhau. Tôi muốn unify bằng pattern: **`claude-00` là canonical (folder thật)**, các profile khác (`01/02/03`...) symlink trỏ về.
 
-Mục tiêu: unify bằng pattern "claude-00 là canonical, các profile khác symlink
-trỏ về" như sau:
+Cụ thể với mỗi project có memory:
+
   ~/.claude-00/projects/<proj-hash>/memory/   ← folder THẬT
   ~/.claude-01/projects/<proj-hash>/memory/   → junction → claude-00
   ~/.claude-02/projects/<proj-hash>/memory/   → junction → claude-00
+  ...
 
-Quy trình giúp tôi:
-1. INVENTORY: list các profile .claude-XX đang có; cho mỗi profile list các
-   project có folder memory không rỗng; chỉ ra project nào ở 2+ profile.
-2. BACKUP: hỏi tôi xác nhận backup folder location, copy toàn bộ memory folder
-   của tất cả profile vào đó.
-3. PLAN: cho mỗi project, đề xuất cách merge (nếu fragmented thì union các
-   file, hỏi tôi chọn khi trùng tên content khác); hiển thị bảng và dừng chờ
-   tôi confirm.
-4. EXECUTE: chuẩn bị canonical ở claude-00 (copy data từ các profile khác
-   sang); cho mỗi profile khác claude-00, xóa memory folder cũ, tạo junction
-   bằng `cmd /c mklink /J` trỏ về claude-00.
-5. VERIFY: list lại tất cả memory folder các profile ≠ claude-00, confirm đều
-   là Junction trỏ về .claude-00.
+### Yêu cầu
 
-Quy tắc bắt buộc:
-- BACKUP trước khi xóa BẤT KỲ memory folder nào.
-- KHÔNG tự merge file trùng tên có nội dung khác — hỏi tôi.
-- Junction dùng `cmd /c mklink /J`, không phải symbolic link.
-- Đóng VS Code/terminal Claude trước khi xóa folder; báo tôi nếu phát hiện
-  file lock.
-- Sau khi xong: nhắc tôi restart VS Code.
+Giúp tôi audit + thực hiện việc unify đó. Quy trình:
 
-Bắt đầu từ Bước 1.
+**Bước 1 — Inventory:**
+- Liệt kê các profile `.claude-XX` đang tồn tại trong `%USERPROFILE%`
+- Cho mỗi profile, liệt kê các project folder dưới `<profile>/projects/` có chứa folder con `memory/` không rỗng
+- In ra bảng: profile × project × số file memory × danh sách file
+- Cho biết các project nào có memory ở 2+ profile (= fragmented, cần merge cẩn thận)
+
+**Bước 2 — Backup:**
+- Tạo folder backup ở chỗ tôi chọn (mặc định `C:/Users/<username>/claude-memory-backup-<timestamp>/`), hỏi tôi xác nhận đường dẫn
+- Copy toàn bộ memory folder của tất cả profile vào backup
+- In ra tổng số file đã backup để xác nhận
+
+**Bước 3 — Plan:**
+- Cho mỗi project có memory, đề xuất:
+  - Project nào có memory chỉ ở 1 profile (không phải claude-00): copy thẳng sang claude-00
+  - Project nào có memory chỉ ở claude-00: giữ nguyên
+  - Project nào fragmented (ở 2+ profile): liệt kê file của từng profile, gợi ý cách merge (union nếu file không trùng tên, hỏi tôi chọn bản nào nếu trùng tên với nội dung khác)
+- Hiển thị plan dưới dạng bảng + dừng lại chờ tôi confirm trước khi thực hiện
+
+**Bước 4 — Execute (sau khi tôi OK):**
+- Chuẩn bị canonical: đảm bảo `~/.claude-00/projects/<proj-hash>/memory/` chứa data merged đầy đủ (copy từ các profile khác sang)
+- Cho mỗi profile khác `claude-00` × mỗi project: xóa folder memory cũ (đã backup), tạo junction `mklink /J` trỏ về claude-00
+- Tạo project folder trống ở profile đích trước nếu chưa có
+
+**Bước 5 — Verify:**
+- Liệt kê lại tất cả memory folder ở các profile ≠ claude-00, xác nhận đều là Junction trỏ về `.claude-00`
+- Đếm: số junction tạo, số folder thật còn sót
+- Đọc thử nội dung memory từ 1-2 project qua junction để confirm data đọc được OK
+
+### Quy tắc bắt buộc
+
+1. **Backup trước khi xóa bất kỳ memory folder nào** — nếu chưa backup thì dừng và yêu cầu tôi confirm.
+2. **Không tự ý merge file trùng tên có nội dung khác nhau** — hỏi tôi chọn bản nào hoặc cho phép gộp.
+3. **Junction phải dùng `cmd /c mklink /J`** (không phải symbolic link — junction không cần admin, hoạt động cross-drive).
+4. **Đóng VS Code và các terminal Claude đang chạy trước khi xóa folder memory** — nếu phát hiện process đang lock file thì dừng và báo tôi.
+5. **Sau khi xong: nhắc tôi restart VS Code** (extension cache memory state).
+
+### Môi trường
+
+- OS: Windows 10/11
+- Shell: PowerShell 7
+- Đường dẫn profile: `%USERPROFILE%\.claude-XX\` (có thể có `.claude-00`, `.claude-01`, `.claude-02`, `.claude-03` — tùy số profile tôi đã tạo)
+
+Bắt đầu từ Bước 1. Cảm ơn.
 ```
 
 </details>

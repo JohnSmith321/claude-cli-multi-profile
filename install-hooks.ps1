@@ -7,7 +7,8 @@
 # Steps:
 #   1. Copy hooks/*.ps1 -> ~/.claude-hooks/
 #   2. Ensure ~/.claude-00 exists as memory canonical (empty folder).
-#   3. Register SessionStart hook in settings.json for each profile (claude-01/02/03...).
+#   3. Discover .claude-<NN> profile dirs in %USERPROFILE%.
+#   4. Register SessionStart hook in settings.json for each profile (claude-01/02/03...).
 #      Skip claude-00 profile (memory canonical, no auth session).
 #
 # Idempotent: safe to re-run. Does not modify other permissions/settings.
