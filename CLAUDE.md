@@ -4,17 +4,15 @@
 
 ## Profile Layout
 
-Mỗi tài khoản Anthropic có một profile riêng dưới `%USERPROFILE%`:
+Số suffix khớp với số account (`.claude-01` = Account #1, `.claude-02` = Account #2, ...). `.claude-00` reserved cho memory canonical (tùy chọn).
 
 | Command | Profile Dir | Mục đích |
 |---|---|---|
 | `claude` | `~/.claude` (junction → profile đang active) | Mặc định, đổi bằng `Switch-Claude` |
-| `claude-01` | `~/.claude-01` | Account #2 |
-| `claude-02` | `~/.claude-02` | Account #3 |
-| `claude-03` | `~/.claude-03` | Account #4 |
-| *(default)* | `~/.claude-00` | Account #1 (canonical cho memory unification) |
-
-`.claude-00` đóng vai trò kép: profile thật cho account #1 **và** memory canonical (các profile khác symlink memory về đây).
+| `claude-01` | `~/.claude-01` | Account #1 |
+| `claude-02` | `~/.claude-02` | Account #2 |
+| `claude-03` | `~/.claude-03` | Account #3 |
+| *(memory canonical)* | `~/.claude-00` | Folder rỗng để các profile khác symlink memory về (tùy chọn) |
 
 ## PowerShell Profile
 
@@ -26,7 +24,7 @@ function claude-02 { $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-02"; claud
 function claude-03 { $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-03"; claude @args }
 
 function Switch-Claude {
-    param([string]$Profile = "00")
+    param([string]$Profile = "01")
     $target = "$env:USERPROFILE\.claude"
     $source = "$env:USERPROFILE\.claude-$Profile"
     if (-not (Test-Path $source)) {
@@ -54,10 +52,10 @@ function Switch-Claude {
 ## Switching
 
 ```powershell
-Switch-Claude 01    # đổi default sang claude-01
-Switch-Claude 02    # đổi default sang claude-02
-Switch-Claude 03    # đổi default sang claude-03
-Switch-Claude 00    # về lại profile mặc định
+Switch-Claude 01    # đổi default sang claude-01 (Account #1)
+Switch-Claude 02    # đổi default sang claude-02 (Account #2)
+Switch-Claude 03    # đổi default sang claude-03 (Account #3)
+# (Không có Switch-Claude 00 — .claude-00 là memory canonical, không có auth)
 ```
 
 Sau khi switch:
@@ -76,11 +74,11 @@ echo $env:CLAUDE_CONFIG_DIR   # profile dir đang dùng
 
 ```powershell
 # Sau khi login profile đầu tiên qua `claude`:
-Rename-Item "$env:USERPROFILE\.claude" ".claude-00"
-cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-00"
+Rename-Item "$env:USERPROFILE\.claude" ".claude-01"
+cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-01"
 
 # Login thêm profile (lặp lại với CLAUDE_CONFIG_DIR khác):
-$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-01"; claude
+$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-02"; claude
 ```
 
 ## Memory Layout — Canonical at `claude-00`

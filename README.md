@@ -40,7 +40,7 @@ Cách thông thường là logout/login đi lại — chậm và mất history. 
 - **Switch instant** bằng lệnh PowerShell (`Switch-Claude 01`) — không cần logout/login
 - **Per-terminal override** với function `claude-01`, `claude-02`... cho phép một terminal dùng profile khác mà không đổi default
 - **Memory unification pattern (tùy chọn)** — chỉ share một thứ duy nhất giữa các profile: `projects/<hash>/memory/` (auto-memory của Claude). Tất cả chat history, sessions, settings vẫn isolate. Áp dụng từng project, không bắt buộc all-or-nothing.
-- **Mở rộng** số profile tùy ý (00, 01, 02, 03, ...)
+- **Mở rộng** số profile tùy ý (01, 02, 03, ...) — số suffix khớp số account
 - **Optional hook** chặn `pip install` ngoài venv — tránh Claude lỡ tay cài package vào global Python
 
 ## Yêu cầu
@@ -58,19 +58,19 @@ Cài Claude Code: `npm install -g @anthropic-ai/claude-code`
 
 ## Quick Start
 
-Setup nhanh 2 profile (`00` = mặc định, `01` = profile phụ):
+Setup nhanh 2 profile (`.claude-01` = Account #1, `.claude-02` = Account #2):
 
 ```powershell
-# 1. Login profile mặc định lần đầu
+# 1. Login Account #1 (lần đầu chạy claude)
 claude
 # (Login bằng account #1, xong /exit)
 
-# 2. Rename thành .claude-00 + tạo junction
-Rename-Item "$env:USERPROFILE\.claude" ".claude-00"
-cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-00"
+# 2. Rename ~/.claude → ~/.claude-01 + tạo junction
+Rename-Item "$env:USERPROFILE\.claude" ".claude-01"
+cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-01"
 
-# 3. Login profile thứ 2
-$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-01"
+# 3. Login Account #2 vào ~/.claude-02
+$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-02"
 claude
 # (Login bằng account #2, xong /exit)
 
@@ -80,9 +80,11 @@ notepad $PROFILE
 . $PROFILE
 
 # 5. Dùng
-claude-01           # chạy profile 01 cho terminal này
-Switch-Claude 01    # đổi default sang 01 (vĩnh viễn)
+claude-02           # chạy profile 02 cho terminal này
+Switch-Claude 02    # đổi default sang 02 (vĩnh viễn)
 ```
+
+Quy ước số: `.claude-01` chứa account #1 đầu tiên, `.claude-02` account #2, v.v. (`.claude-00` reserved cho memory canonical — xem section "Memory hoạt động ra sao", tùy chọn).
 
 Phần dưới đây là hướng dẫn đầy đủ + memory unification.
 
@@ -98,36 +100,42 @@ claude
 
 Lần chạy đầu sẽ tạo `~/.claude/` và yêu cầu login. Login bằng account #1 của bạn, xong `/exit`.
 
-### Bước 2 — Rename profile mặc định + tạo junction
+### Bước 2 — Rename profile thành .claude-01 + tạo junction
+
+Profile vừa login (Account #1) đang ở `~/.claude/`. Đổi tên thành `.claude-01` để khớp với quy ước "số suffix = số account".
 
 > **Lưu ý:** Đóng tất cả VS Code và terminal có Claude đang chạy trước khi làm bước này (tránh file lock).
 
 ```powershell
-Rename-Item "$env:USERPROFILE\.claude" ".claude-00"
-cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-00"
+Rename-Item "$env:USERPROFILE\.claude" ".claude-01"
+cmd /c mklink /J "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-01"
 ```
 
 Verify:
 ```powershell
 Get-Item "$env:USERPROFILE\.claude" | Select Name, LinkType, Target
-# LinkType = Junction, Target → ...\.claude-00
+# LinkType = Junction, Target → ...\.claude-01
 ```
 
-### Bước 3 — Tạo các profile bổ sung
+### Bước 3 — Tạo các profile bổ sung (account #2, #3...)
 
-Với mỗi tài khoản phụ, set `CLAUDE_CONFIG_DIR` tạm thời rồi login:
+Với mỗi tài khoản phụ, set `CLAUDE_CONFIG_DIR` tạm thời rồi login. **Số suffix khớp với account #**:
 
 ```powershell
-$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-01"
-claude
-# Login bằng account #2, /exit
-
+# Account #2 → .claude-02
 $env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-02"
 claude
-# Login bằng account #3, /exit
+# Login Account #2, /exit
+
+# Account #3 → .claude-03
+$env:CLAUDE_CONFIG_DIR = "$env:USERPROFILE\.claude-03"
+claude
+# Login Account #3, /exit
 ```
 
-Lặp lại cho `03`, `04`... nếu cần.
+Lặp lại cho `04`, `05`... nếu cần.
+
+> **Bỏ qua `.claude-00`** — số này reserved cho memory canonical (xem section "Memory hoạt động ra sao", tùy chọn). Bắt đầu account thứ 2 từ `.claude-02`.
 
 ### Bước 4 — Cài PowerShell shortcuts
 
@@ -155,7 +163,7 @@ function claude-02 { $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-02"; claud
 function claude-03 { $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-03"; claude @args }
 
 function Switch-Claude {
-    param([string]$Profile = "00")
+    param([string]$Profile = "01")
     $target = "$env:USERPROFILE\.claude"
     $source = "$env:USERPROFILE\.claude-$Profile"
     if (-not (Test-Path $source)) {
@@ -179,11 +187,11 @@ Save → reload:
 ### Bước 5 — Verify
 
 ```powershell
-claude-01 auth status   # phải in ra account của profile 01
-claude-02 auth status   # phải in ra account của profile 02
-Switch-Claude 01        # đổi default sang 01
-claude auth status      # default giờ là 01
-Switch-Claude 00        # về lại 00
+claude-01 auth status   # phải in ra Account #1
+claude-02 auth status   # phải in ra Account #2
+Switch-Claude 02        # đổi default sang Account #2
+claude auth status      # giờ default = Account #2
+Switch-Claude 01        # về lại Account #1
 ```
 
 ---
@@ -223,16 +231,18 @@ Claude Code có **2 cơ chế "memory" độc lập** — hiểu rõ để dùng
 
 Khi bạn dùng nhiều profile và mở **cùng 1 project** từ các profile khác nhau, mặc định memory bị phân mảnh — Claude trong profile A không thấy memory profile B đã ghi.
 
-**Giải pháp:** Lấy `claude-00` làm canonical (folder thật), các profile khác (`01/02/03`...) symlink trỏ về.
+**Giải pháp:** Tạo `~/.claude-00/` rỗng làm memory canonical (không có auth, chỉ chứa memory). Các profile thật (`.claude-01`, `.claude-02`, `.claude-03`...) symlink memory folder trỏ về `.claude-00`.
 
 ```
-~/.claude-00/projects/<proj-hash>/memory/   ← folder THẬT (canonical)
+~/.claude-00/projects/<proj-hash>/memory/   ← folder THẬT (canonical, KHÔNG có auth)
 ~/.claude-01/projects/<proj-hash>/memory/   → junction → claude-00
 ~/.claude-02/projects/<proj-hash>/memory/   → junction → claude-00
 ~/.claude-03/projects/<proj-hash>/memory/   → junction → claude-00
 ```
 
-Sau khi áp pattern: Claude trong mọi profile khi mở project đó sẽ đọc/ghi cùng 1 nơi.
+Sau khi áp pattern: Claude trong mọi profile khi mở project đó sẽ đọc/ghi memory cùng 1 nơi.
+
+> `.claude-00` chỉ là 1 folder rỗng dành cho memory canonical. Đừng login account vào đây — `Switch-Claude` mặc định cũng không trỏ về 00 (không có auth để dùng).
 
 ### Cái gì isolate, cái gì share sau pattern
 
@@ -393,8 +403,10 @@ Nếu bạn muốn teammate cũng setup pattern này trên máy của họ, các
 
 ```text
 Tôi đang setup Multi-Profile Claude CLI trên Windows. Tôi có nhiều profile
-(.claude-00, .claude-01, có thể có .claude-02, .claude-03) dưới %USERPROFILE%,
-mỗi profile login một account Anthropic khác nhau.
+(.claude-01, .claude-02, có thể có .claude-03...) dưới %USERPROFILE%, mỗi
+profile login một account Anthropic khác nhau. (Quy ước: suffix khớp với
+số account. .claude-00 reserved cho memory canonical, chưa tồn tại hoặc
+rỗng — sẽ được tạo khi áp pattern bên dưới.)
 
 Vấn đề: mỗi profile lưu auto-memory riêng cho cùng project → switch profile
 thì memory không thấy nhau.
