@@ -1,0 +1,23 @@
+# Personal/local files — not for public repo
+
+# Local backup snapshots (machine-specific data)
+memory-backup-*/
+claude-00-full-backup-*/
+
+# Claude Code per-project state cache
+.claude/
+
+# Temp scripts dùng trong quá trình setup
+_*.ps1
+_*.sh
+
+# Prompt template gửi teammate (chứa internal context, giữ local)
+colleague-prompt.md
+
+# OS / editor noise
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
