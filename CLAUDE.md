@@ -4,7 +4,7 @@
 
 ## Profile Layout
 
-Số suffix khớp với số account (`.claude-01` = Account #1, `.claude-02` = Account #2, ...). `.claude-00` reserved cho memory canonical (tùy chọn).
+Số suffix khớp với số account (`.claude-01` = Account #1, `.claude-02` = Account #2, ...). `.claude-00` là memory canonical (folder rỗng, auto-tạo bởi `install-hooks.ps1`).
 
 | Command | Profile Dir | Mục đích |
 |---|---|---|
@@ -12,7 +12,7 @@ Số suffix khớp với số account (`.claude-01` = Account #1, `.claude-02` =
 | `claude-01` | `~/.claude-01` | Account #1 |
 | `claude-02` | `~/.claude-02` | Account #2 |
 | `claude-03` | `~/.claude-03` | Account #3 |
-| *(memory canonical)* | `~/.claude-00` | Folder rỗng để các profile khác symlink memory về (tùy chọn) |
+| *(memory canonical)* | `~/.claude-00` | Folder rỗng để các profile khác symlink memory về |
 
 ## PowerShell Profile
 

@@ -39,7 +39,7 @@ Cách thông thường là logout/login đi lại — chậm và mất history. 
 - **Cô lập** auth, chat history, sessions, settings, hooks giữa các profile — mỗi tài khoản Anthropic có workspace riêng
 - **Switch instant** bằng lệnh PowerShell (`Switch-Claude 01`) — không cần logout/login
 - **Per-terminal override** với function `claude-01`, `claude-02`... cho phép một terminal dùng profile khác mà không đổi default
-- **Memory unification pattern (tùy chọn)** — chỉ share một thứ duy nhất giữa các profile: `projects/<hash>/memory/` (auto-memory của Claude). Tất cả chat history, sessions, settings vẫn isolate. Áp dụng từng project, không bắt buộc all-or-nothing.
+- **Memory unification** mặc định qua SessionStart hook — auto-share `projects/<hash>/memory/` giữa các profile khi mở project. Tất cả chat history, sessions, settings vẫn isolate. Cài 1 lệnh (`./install-hooks.ps1`).
 - **Mở rộng** số profile tùy ý (01, 02, 03, ...) — số suffix khớp số account
 - **Optional hook** chặn `pip install` ngoài venv — tránh Claude lỡ tay cài package vào global Python
 
@@ -79,12 +79,18 @@ notepad $PROFILE
 # Paste đoạn function ở phần "Setup chi tiết" bên dưới
 . $PROFILE
 
-# 5. Dùng
+# 5. Cài auto memory sync hook (clone repo này về trước)
+.\install-hooks.ps1
+# → tạo ~/.claude-00 rỗng làm memory canonical
+# → register SessionStart hook trên mọi profile
+# Restart VS Code sau bước này.
+
+# 6. Dùng
 claude-02           # chạy profile 02 cho terminal này
 Switch-Claude 02    # đổi default sang 02 (vĩnh viễn)
 ```
 
-Quy ước số: `.claude-01` chứa account #1 đầu tiên, `.claude-02` account #2, v.v. (`.claude-00` reserved cho memory canonical — xem section "Memory hoạt động ra sao", tùy chọn).
+Quy ước số: `.claude-01` chứa account #1 đầu tiên, `.claude-02` account #2, v.v. `.claude-00` là folder rỗng làm memory canonical (xem section "Memory hoạt động ra sao").
 
 Phần dưới đây là hướng dẫn đầy đủ + memory unification.
 
@@ -135,7 +141,7 @@ claude
 
 Lặp lại cho `04`, `05`... nếu cần.
 
-> **Bỏ qua `.claude-00`** — số này reserved cho memory canonical (xem section "Memory hoạt động ra sao", tùy chọn). Bắt đầu account thứ 2 từ `.claude-02`.
+> **Bỏ qua `.claude-00`** — số này là memory canonical (auto-tạo bởi `install-hooks.ps1`, xem section "Memory hoạt động ra sao"). Bắt đầu account thứ 2 từ `.claude-02`.
 
 ### Bước 4 — Cài PowerShell shortcuts
 
@@ -300,9 +306,9 @@ Câu hỏi tự nhiên: nếu memory sync được, sao không sync luôn settin
   - **Concurrent safety:** chạy 2 profile cùng lúc trong 2 terminal không corrupt state
   - **Billing clarity:** mỗi account có quota riêng, biết session nào dùng quota của ai
 
-### Auto-apply qua SessionStart hook (khuyến nghị)
+### Auto-apply qua SessionStart hook
 
-Thay vì chạy script thủ công cho từng project, bạn có thể cài **SessionStart hook** — mỗi lần Claude bắt đầu session trong 1 project, hook tự động apply pattern.
+Đây là cách áp dụng pattern mặc định (đã có ở Quick Start bước 5). Mỗi lần Claude bắt đầu session trong 1 project, **SessionStart hook** tự động apply pattern — không cần chạy script thủ công cho từng project.
 
 Repo này có sẵn:
 - `hooks/auto-memory-sync.ps1` — hook script (idempotent, safe, silent on success)

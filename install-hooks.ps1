@@ -6,7 +6,8 @@
 #
 # Steps:
 #   1. Copy hooks/*.ps1 -> ~/.claude-hooks/
-#   2. Register SessionStart hook in settings.json for each profile (claude-01/02/03...).
+#   2. Ensure ~/.claude-00 exists as memory canonical (empty folder).
+#   3. Register SessionStart hook in settings.json for each profile (claude-01/02/03...).
 #      Skip claude-00 profile (memory canonical, no auth session).
 #
 # Idempotent: safe to re-run. Does not modify other permissions/settings.
@@ -46,7 +47,19 @@ $hookFile = Join-Path $hookTargetDir "auto-memory-sync.ps1"
 $hookCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$($hookFile -replace '\\','/')`""
 
 Write-Host ""
-Write-Host "=== Step 2: Discover profiles ===" -ForegroundColor Cyan
+Write-Host "=== Step 2: Ensure .claude-00 memory canonical ===" -ForegroundColor Cyan
+$canonRoot = "$env:USERPROFILE\.claude-00"
+$canonProjects = Join-Path $canonRoot "projects"
+if (-not (Test-Path $canonRoot)) {
+    New-Item -ItemType Directory -Force -Path $canonProjects | Out-Null
+    Write-Host "  created $canonRoot (empty memory canonical)" -ForegroundColor Green
+} else {
+    New-Item -ItemType Directory -Force -Path $canonProjects | Out-Null
+    Write-Host "  exists $canonRoot" -ForegroundColor DarkGray
+}
+
+Write-Host ""
+Write-Host "=== Step 3: Discover profiles ===" -ForegroundColor Cyan
 # Only match .claude-<digits> (00, 01, 02, ...). Exclude .claude-hooks, .claude-backup, etc.
 $profileDirs = Get-ChildItem "$env:USERPROFILE" -Directory -Filter ".claude-*" -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -match '^\.claude-\d+$' }
@@ -58,7 +71,7 @@ if (-not $profileDirs) {
 $profileDirs | ForEach-Object { Write-Host "  found $($_.Name)" -ForegroundColor Green }
 
 Write-Host ""
-Write-Host "=== Step 3: Register SessionStart hook in settings.json ===" -ForegroundColor Cyan
+Write-Host "=== Step 4: Register SessionStart hook in settings.json ===" -ForegroundColor Cyan
 
 function Add-SessionStartHook {
     param([string]$SettingsPath, [string]$Command)
