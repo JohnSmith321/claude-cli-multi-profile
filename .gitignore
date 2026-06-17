@@ -14,6 +14,9 @@ _*.sh
 # Prompt template gửi teammate (chứa internal context, giữ local)
 colleague-prompt.md
 
+# Python virtual environment
+.venv/
+
 # OS / editor noise
 Thumbs.db
 .DS_Store
